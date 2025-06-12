@@ -1,80 +1,98 @@
-<!DOCTYPE html><html>
+<!DOCTYPE html>
+<html>
 <head>
-  <title>Painel Firebase - Gerenciar Usuários</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>Gerenciar Usuários Firebase</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" crossorigin="anonymous">
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #f8f9fa; }
-    h1 { color: #333; }
-    .user-box { background: #fff; padding: 15px; margin-bottom: 10px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .user-box input, .user-box select { margin: 5px 0; padding: 5px; width: 100%; }
-    .device-list { font-size: 0.9em; color: #555; }
-    button { padding: 6px 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    button:hover { background-color: #0056b3; }
+    .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+    .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; }
+    .close { position: absolute; top: 10px; right: 30px; color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
+    .footer { bottom: 0; width: 100%; height: 40px; line-height: 40px; background-color: #f5f5f5; text-align: center; }
   </style>
 </head>
 <body>
-  <h1>Gerenciar Usuários Firebase</h1>
-  <div id="users"></div>  <script>
-    const firebaseConfig = {
-      databaseURL: "https://server-7a301-default-rtdb.firebaseio.com/"
-    };
+<nav class="navbar navbar-light bg-light">
+  <a class="navbar-brand" href="#"><b>Gerenciar Firebase</b></a>
+</nav>
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+<main class="container">
+  <div class="text-center mt-5 mb-5" id="wait" style="display: none;">
+    <div class="spinner-border" role="status">
+      <span class="sr-only">Loading...</span>
+    </div>
+  </div>
 
-    function loadUsers() {
-      db.ref("users").once("value", snapshot => {
-        const usersDiv = document.getElementById("users");
-        usersDiv.innerHTML = "";
+  <div class="table-responsive" id="result">
+    <h1 class="mt-3 mb-3 text-center">Usuários</h1>
+    <table class="table table-bordered" id="userlist">
+      <thead>
+        <tr>
+          <th>Usuário</th>
+          <th>Expira em</th>
+          <th>Status</th>
+          <th>Ação</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</main>
 
-        snapshot.forEach(userSnap => {
-          const user = userSnap.val();
-          const key = userSnap.key;
+<div id="myModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="document.getElementById('myModal').style.display='none'">&times;</span>
+    <h2>Detalhes do Usuário</h2>
+    <p>Usuário: <span id="username"></span></p>
+    <p>Expira em: <span id="expira"></span></p>
+    <p>Dispositivos: <span id="devices"></span></p>
+  </div>
+</div>
 
-          const div = document.createElement("div");
-          div.className = "user-box";
-          div.innerHTML = `
-            <h3>${key}</h3>
-            <label>Senha: <input type="text" id="pass-${key}" value="${user.senha}" /></label><br>
-            <label>Expira em: <input type="date" id="exp-${key}" value="${user.expira_em}" /></label><br>
-            <label>Devices Enabled: 
-              <select id="enabled-${key}">
-                <option value="true" ${user.devices.enabled ? 'selected' : ''}>true</option>
-                <option value="false" ${!user.devices.enabled ? 'selected' : ''}>false</option>
-              </select>
-            </label><br>
-            <label>Device Limit: <input type="number" id="limit-${key}" value="${user.devices.limit}" /></label><br>
-            <label>Lista de Devices:</label>
-            <div class="device-list" id="list-${key}">${Object.keys(user.devices.list).join(", ") || "Nenhum"}</div>
-            <button onclick="saveUser('${key}')">Salvar</button>
-          `;
-          usersDiv.appendChild(div);
-        });
+<footer class="footer">
+  Made with &hearts; &copy; 2025
+</footer>
+
+<script>
+  const firebaseConfig = {
+    databaseURL: "https://server-7a301-default-rtdb.firebaseio.com/"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  function loadUsers() {
+    const tableBody = document.querySelector("#userlist tbody");
+    tableBody.innerHTML = "";
+
+    db.ref("users").once("value", snapshot => {
+      snapshot.forEach(userSnap => {
+        const user = userSnap.val();
+        const key = userSnap.key;
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${key}</td>
+          <td>${user.expira_em || '-'}</td>
+          <td>${user.devices?.enabled ? 'Ativo' : 'Inativo'}</td>
+          <td><button class="btn btn-info btn-sm" onclick="showUser('${key}', '${user.expira_em}', ${user.devices?.limit || 0})">Detalhes</button></td>
+        `;
+
+        tableBody.appendChild(row);
       });
-    }
+    });
+  }
 
-    function saveUser(userId) {
-      const senha = document.getElementById(`pass-${userId}`).value;
-      const expira_em = document.getElementById(`exp-${userId}`).value;
-      const enabled = document.getElementById(`enabled-${userId}`).value === "true";
-      const limit = parseInt(document.getElementById(`limit-${userId}`).value);
+  function showUser(nome, expira, limit) {
+    document.getElementById("username").innerText = nome;
+    document.getElementById("expira").innerText = expira || '-';
+    document.getElementById("devices").innerText = `Limite: ${limit}`;
+    document.getElementById("myModal").style.display = 'block';
+  }
 
-      const updatedUser = {
-        senha,
-        expira_em,
-        devices: {
-          enabled,
-          limit,
-          list: {} // Não editável no painel, apenas visual
-        }
-      };
-
-      db.ref("users/" + userId).update(updatedUser)
-        .then(() => alert("Usuário atualizado com sucesso!"))
-        .catch(err => alert("Erro ao salvar: " + err));
-    }
-
-    loadUsers();
-  </script></body>
+  window.onload = loadUsers;
+</script>
+</body>
 </html>
