@@ -9,14 +9,15 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
     .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
-    .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; }
-    .close { position: absolute; top: 10px; right: 30px; color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
+    .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 500px; position: relative; }
+    .close { position: absolute; top: 10px; right: 20px; color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
     .footer { bottom: 0; width: 100%; height: 40px; line-height: 40px; background-color: #f5f5f5; text-align: center; }
   </style>
 </head>
 <body>
 <nav class="navbar navbar-light bg-light">
   <a class="navbar-brand" href="#"><b>Gerenciar Firebase</b></a>
+  <button class="btn btn-primary" onclick="openAddUserModal()">Adicionar Usuário</button>
 </nav>
 
 <main class="container">
@@ -42,13 +43,49 @@
   </div>
 </main>
 
-<div id="myModal" class="modal">
+<div id="viewModal" class="modal">
   <div class="modal-content">
-    <span class="close" onclick="document.getElementById('myModal').style.display='none'">&times;</span>
+    <span class="close" onclick="document.getElementById('viewModal').style.display='none'">&times;</span>
     <h2>Detalhes do Usuário</h2>
-    <p>Usuário: <span id="username"></span></p>
-    <p>Expira em: <span id="expira"></span></p>
-    <p>Dispositivos: <span id="devices"></span></p>
+    <p><strong>Usuário:</strong> <span id="view_username"></span></p>
+    <p><strong>Expira em:</strong> <span id="view_expira"></span></p>
+    <p><strong>Senha:</strong> <span id="view_senha"></span></p>
+    <p><strong>Dispositivos Ativados:</strong> <span id="view_enabled"></span></p>
+    <p><strong>Limite de Dispositivos:</strong> <span id="view_limit"></span></p>
+  </div>
+</div>
+
+<div id="userModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeUserModal()">&times;</span>
+    <h2 id="modalTitle">Editar Usuário</h2>
+    <form onsubmit="saveUser(event)">
+      <input type="hidden" id="userKey">
+      <div class="form-group">
+        <label for="username">Usuário</label>
+        <input type="text" id="username" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label for="senha">Senha</label>
+        <input type="text" id="senha" class="form-control">
+      </div>
+      <div class="form-group">
+        <label for="expira">Data de Expiração</label>
+        <input type="date" id="expira" class="form-control">
+      </div>
+      <div class="form-group">
+        <label for="enabled">Dispositivos Ativados</label>
+        <select id="enabled" class="form-control">
+          <option value="true">true</option>
+          <option value="false">false</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="limit">Limite de Dispositivos</label>
+        <input type="number" id="limit" class="form-control" min="0">
+      </div>
+      <button type="submit" class="btn btn-success">Salvar</button>
+    </form>
   </div>
 </div>
 
@@ -71,25 +108,79 @@
       snapshot.forEach(userSnap => {
         const user = userSnap.val();
         const key = userSnap.key;
-
         const row = document.createElement("tr");
         row.innerHTML = `
           <td>${key}</td>
           <td>${user.expira_em || '-'}</td>
           <td>${user.devices?.enabled ? 'Ativo' : 'Inativo'}</td>
-          <td><button class="btn btn-info btn-sm" onclick="showUser('${key}', '${user.expira_em}', ${user.devices?.limit || 0})">Detalhes</button></td>
+          <td>
+            <button class="btn btn-sm btn-info" onclick="viewUser('${key}')">Ver</button>
+            <button class="btn btn-sm btn-warning" onclick="editUser('${key}')">Editar</button>
+          </td>
         `;
-
         tableBody.appendChild(row);
       });
     });
   }
 
-  function showUser(nome, expira, limit) {
-    document.getElementById("username").innerText = nome;
-    document.getElementById("expira").innerText = expira || '-';
-    document.getElementById("devices").innerText = `Limite: ${limit}`;
-    document.getElementById("myModal").style.display = 'block';
+  function viewUser(key) {
+    db.ref(`users/${key}`).once("value", snap => {
+      const user = snap.val();
+      document.getElementById("view_username").innerText = key;
+      document.getElementById("view_expira").innerText = user.expira_em || "-";
+      document.getElementById("view_senha").innerText = user.senha || "-";
+      document.getElementById("view_enabled").innerText = user.devices?.enabled ? "true" : "false";
+      document.getElementById("view_limit").innerText = user.devices?.limit ?? "-";
+      document.getElementById("viewModal").style.display = "block";
+    });
+  }
+
+  function editUser(key) {
+    db.ref(`users/${key}`).once("value", snap => {
+      const user = snap.val();
+      document.getElementById("modalTitle").innerText = "Editar Usuário";
+      document.getElementById("userKey").value = key;
+      document.getElementById("username").value = key;
+      document.getElementById("senha").value = user.senha || "";
+      document.getElementById("expira").value = user.expira_em || "";
+      document.getElementById("enabled").value = user.devices?.enabled ? "true" : "false";
+      document.getElementById("limit").value = user.devices?.limit || 0;
+      document.getElementById("userModal").style.display = "block";
+    });
+  }
+
+  function openAddUserModal() {
+    document.getElementById("modalTitle").innerText = "Adicionar Usuário";
+    document.getElementById("userKey").value = "";
+    document.getElementById("username").value = "";
+    document.getElementById("senha").value = "";
+    document.getElementById("expira").value = "";
+    document.getElementById("enabled").value = "true";
+    document.getElementById("limit").value = 1;
+    document.getElementById("userModal").style.display = "block";
+  }
+
+  function closeUserModal() {
+    document.getElementById("userModal").style.display = "none";
+  }
+
+  function saveUser(event) {
+    event.preventDefault();
+    const key = document.getElementById("userKey").value || document.getElementById("username").value;
+    const userData = {
+      senha: document.getElementById("senha").value,
+      expira_em: document.getElementById("expira").value,
+      devices: {
+        enabled: document.getElementById("enabled").value === "true",
+        limit: parseInt(document.getElementById("limit").value) || 0,
+        list: {}
+      }
+    };
+    db.ref(`users/${key}`).set(userData).then(() => {
+      closeUserModal();
+      loadUsers();
+      alert("Usuário salvo com sucesso!");
+    });
   }
 
   window.onload = loadUsers;
