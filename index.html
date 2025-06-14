@@ -1,4 +1,5 @@
-<!DOCTYPE html><html>
+<!DOCTYPE html>
+<html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -17,12 +18,14 @@
 <nav class="navbar navbar-light bg-light">
   <a class="navbar-brand" href="#"><b>Gerenciar Firebase</b></a>
   <button class="btn btn-primary" onclick="openAddUserModal()">Adicionar Usuário</button>
-</nav><main class="container">
+</nav>
+<main class="container">
   <div class="text-center mt-5 mb-5" id="wait" style="display: none;">
     <div class="spinner-border" role="status">
       <span class="sr-only">Loading...</span>
     </div>
-  </div>  <div class="table-responsive" id="result">
+  </div>
+  <div class="table-responsive" id="result">
     <h1 class="mt-3 mb-3 text-center">Usuários</h1>
     <table class="table table-bordered" id="userlist">
       <thead>
@@ -36,9 +39,12 @@
       <tbody></tbody>
     </table>
   </div>
-</main><div id="viewModal" class="modal">
+</main>
+
+<!-- Modal Visualizar -->
+<div id="viewModal" class="modal">
   <div class="modal-content">
-    <span class="close" onclick="document.getElementById('viewModal').style.display='none'">&times;</span>
+    <span class="close" onclick="closeViewModal()">&times;</span>
     <h2>Detalhes do Usuário</h2>
     <p><strong>Usuário:</strong> <span id="view_username"></span></p>
     <p><strong>Expira em:</strong> <span id="view_expira"></span></p>
@@ -46,7 +52,10 @@
     <p><strong>Dispositivos Ativados:</strong> <span id="view_enabled"></span></p>
     <p><strong>Limite de Dispositivos:</strong> <span id="view_limit"></span></p>
   </div>
-</div><div id="userModal" class="modal">
+</div>
+
+<!-- Modal Adicionar/Editar -->
+<div id="userModal" class="modal">
   <div class="modal-content">
     <span class="close" onclick="closeUserModal()">&times;</span>
     <h2 id="modalTitle">Editar Usuário</h2>
@@ -81,9 +90,13 @@
       </div>
     </form>
   </div>
-</div><footer class="footer">
+</div>
+
+<footer class="footer">
   Made with &hearts; &copy; 2025
-</footer><script>
+</footer>
+
+<script>
   const firebaseConfig = {
     databaseURL: "https://server-7a301-default-rtdb.firebaseio.com/"
   };
@@ -110,33 +123,6 @@
         `;
         tableBody.appendChild(row);
       });
-    });
-  }
-
-  function viewUser(key) {
-    db.ref(`users/${key}`).once("value", snap => {
-      const user = snap.val();
-      document.getElementById("view_username").innerText = key;
-      document.getElementById("view_expira").innerText = user.expira_em || "-";
-      document.getElementById("view_senha").innerText = user.senha || "-";
-      document.getElementById("view_enabled").innerText = user.devices?.enabled ? "true" : "false";
-      document.getElementById("view_limit").innerText = user.devices?.limit ?? "-";
-      document.getElementById("viewModal").style.display = "block";
-    });
-  }
-
-  function editUser(key) {
-    db.ref(`users/${key}`).once("value", snap => {
-      const user = snap.val();
-      document.getElementById("modalTitle").innerText = "Editar Usuário";
-      document.getElementById("userKey").value = key;
-      document.getElementById("username").value = key;
-      document.getElementById("senha").value = user.senha || "";
-      document.getElementById("expira").value = user.expira_em || "";
-      document.getElementById("enabled").value = user.devices?.enabled ? "true" : "false";
-      document.getElementById("limit").value = user.devices?.limit || 0;
-      document.getElementById("deleteBtn").style.display = "inline-block";
-      document.getElementById("userModal").style.display = "block";
     });
   }
 
@@ -178,7 +164,6 @@
   function deleteUser() {
     const key = document.getElementById("userKey").value;
     if (!key) return;
-
     if (confirm(`Tem certeza que deseja excluir o usuário '${key}'?`)) {
       firebase.database().ref("users/" + key).remove()
         .then(() => {
@@ -192,6 +177,70 @@
     }
   }
 
+  let countdownInterval;
+  function viewUser(key) {
+    clearInterval(countdownInterval); // Limpa contador anterior
+
+    db.ref(`users/${key}`).once("value", snap => {
+      const user = snap.val();
+      document.getElementById("view_username").innerText = key;
+      document.getElementById("view_senha").innerText = user.senha || "-";
+      document.getElementById("view_enabled").innerText = user.devices?.enabled ? "true" : "false";
+      document.getElementById("view_limit").innerText = user.devices?.limit ?? "-";
+      document.getElementById("viewModal").style.display = "block";
+
+      const expira = user.expira_em;
+
+      function atualizarContador() {
+        if (!expira) {
+          document.getElementById("view_expira").innerText = "-";
+          clearInterval(countdownInterval);
+          return;
+        }
+
+        const agora = new Date();
+        const expiraData = new Date(expira + "T23:59:59");
+        const diffMs = expiraData - agora;
+
+        if (diffMs > 0) {
+          const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          const horas = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+          const minutos = Math.floor((diffMs / (1000 * 60)) % 60);
+          const segundos = Math.floor((diffMs / 1000) % 60);
+          document.getElementById("view_expira").innerText =
+            `${expira} (em ${dias}d ${horas}h ${minutos}m ${segundos}s)`;
+        } else {
+          document.getElementById("view_expira").innerText = `${expira} (expirado)`;
+          clearInterval(countdownInterval);
+        }
+      }
+
+      atualizarContador();
+      countdownInterval = setInterval(atualizarContador, 1000);
+    });
+  }
+
+  function closeViewModal() {
+    clearInterval(countdownInterval);
+    document.getElementById("viewModal").style.display = "none";
+  }
+
+  function editUser(key) {
+    db.ref(`users/${key}`).once("value", snap => {
+      const user = snap.val();
+      document.getElementById("modalTitle").innerText = "Editar Usuário";
+      document.getElementById("userKey").value = key;
+      document.getElementById("username").value = key;
+      document.getElementById("senha").value = user.senha || "";
+      document.getElementById("expira").value = user.expira_em || "";
+      document.getElementById("enabled").value = user.devices?.enabled ? "true" : "false";
+      document.getElementById("limit").value = user.devices?.limit || 0;
+      document.getElementById("deleteBtn").style.display = "inline-block";
+      document.getElementById("userModal").style.display = "block";
+    });
+  }
+
   window.onload = loadUsers;
-</script></body>
-  </html>
+</script>
+</body>
+                                                  </html>
