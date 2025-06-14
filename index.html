@@ -117,7 +117,7 @@
           <td>${user.expira_em || '-'}</td>
           <td>${user.devices?.enabled ? 'Ativo' : 'Inativo'}</td>
           <td>
-            <button class="btn btn-sm btn-info" onclick="viewUser('${key}')">Ver</button>
+            <button class="btn btn-sm btn-info" onclick="viewUser('${key}')">Detalhes</button>
             <button class="btn btn-sm btn-warning" onclick="editUser('${key}')">Editar</button>
           </td>
         `;
@@ -176,7 +176,6 @@
         });
     }
   }
-
   let countdownInterval;
   function viewUser(key) {
     clearInterval(countdownInterval); // Limpa contador anterior
