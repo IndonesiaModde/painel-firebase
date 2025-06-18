@@ -51,6 +51,7 @@
     <p><strong>Senha:</strong> <span id="view_senha"></span></p>
     <p><strong>Dispositivos Ativados:</strong> <span id="view_enabled"></span></p>
     <p><strong>Limite de Dispositivos:</strong> <span id="view_limit"></span></p>
+    <p><strong>Lista de Dispositivos:</strong> <span id="view_list"></span></p>
   </div>
 </div>
 
@@ -93,7 +94,9 @@
 </div>
 
 <footer class="footer" id="footer">
-    <center><span class="text-muted">Made with &hearts; by <a href="https://t.me/MrViniVx">MrViniVx</a> &copy; 2025  (Powered by : <a href="">vechis</a> & <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-bootstrap-fill" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.002 0a4 4 0 0 0-4 4v8a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4V4a4 4 0 0 0-4-4h-8zm1.06 12h3.475c1.804 0 2.888-.908 2.888-2.396 0-1.102-.761-1.916-1.904-2.034v-.1c.832-.14 1.482-.93 1.482-1.816 0-1.3-.955-2.11-2.542-2.11H5.062V12zm1.313-4.875V4.658h1.78c.973 0 1.542.457 1.542 1.237 0 .802-.604 1.23-1.764 1.23H6.375zm0 3.762h1.898c1.184 0 1.81-.48 1.81-1.377 0-.885-.65-1.348-1.886-1.348H6.375v2.725z"/></svg> <a href="https://getbootstrap.com/">Bootstrap</a>)</span></center>
+  <center>
+    <span class="text-muted">Made with &hearts; by <a href="https://t.me/MrViniVx">MrViniVx</a> &copy; 2025 (Powered by : <a href="">vechis</a> & <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-bootstrap-fill" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.002 0a4 4 0 0 0-4 4v8a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4V4a4 4 0 0 0-4-4h-8zm1.06 12h3.475c1.804 0 2.888-.908 2.888-2.396 0-1.102-.761-1.916-1.904-2.034v-.1c.832-.14 1.482-.93 1.482-1.816 0-1.3-.955-2.11-2.542-2.11H5.062V12zm1.313-4.875V4.658h1.78c.973 0 1.542.457 1.542 1.237 0 .802-.604 1.23-1.764 1.23H6.375zm0 3.762h1.898c1.184 0 1.81-.48 1.81-1.377 0-.885-.65-1.348-1.886-1.348H6.375v2.725z"/></svg> <a href="https://getbootstrap.com/">Bootstrap</a>)</span>
+  </center>
 </footer>
 
 <script>
@@ -106,7 +109,6 @@
   function loadUsers() {
     const tableBody = document.querySelector("#userlist tbody");
     tableBody.innerHTML = "";
-
     db.ref("users").once("value", snapshot => {
       snapshot.forEach(userSnap => {
         const user = userSnap.val();
@@ -165,7 +167,7 @@
     const key = document.getElementById("userKey").value;
     if (!key) return;
     if (confirm(`Tem certeza que deseja excluir o usuário '${key}'?`)) {
-      firebase.database().ref("users/" + key).remove()
+      db.ref("users/" + key).remove()
         .then(() => {
           closeUserModal();
           loadUsers();
@@ -176,16 +178,19 @@
         });
     }
   }
-  let countdownInterval;
-  function viewUser(key) {
-    clearInterval(countdownInterval); // Limpa contador anterior
 
+  let countdownInterval;
+
+  function viewUser(key) {
+    clearInterval(countdownInterval);
     db.ref(`users/${key}`).once("value", snap => {
       const user = snap.val();
       document.getElementById("view_username").innerText = key;
       document.getElementById("view_senha").innerText = user.senha || "-";
       document.getElementById("view_enabled").innerText = user.devices?.enabled ? "true" : "false";
       document.getElementById("view_limit").innerText = user.devices?.limit ?? "-";
+      const list = user.devices?.list;
+      document.getElementById("view_list").innerText = list ? Object.keys(list).join(', ') : "-";
       document.getElementById("viewModal").style.display = "block";
 
       const expira = user.expira_em;
@@ -242,4 +247,4 @@
   window.onload = loadUsers;
 </script>
 </body>
-                                                  </html>
+  </html>
